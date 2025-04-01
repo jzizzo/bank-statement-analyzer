@@ -55,7 +55,13 @@ export default function Dashboard() {
     // Get data from localStorage
     const storedData = localStorage.getItem("statementData");
     if (storedData) {
-      setData(JSON.parse(storedData));
+      try {
+        const parsedData = JSON.parse(storedData);
+        setData(parsedData);
+      } catch (error) {
+        console.error('Error parsing stored data:', error);
+        localStorage.removeItem("statementData"); // Clear invalid data
+      }
     }
     setLoading(false);
   }, []);

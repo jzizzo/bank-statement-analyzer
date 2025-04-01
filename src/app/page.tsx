@@ -1,14 +1,20 @@
-import { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
-
+import { useRouter } from "next/navigation";
 import FileUpload from "../components/ui/FileUpload";
-
-export const metadata: Metadata = {
-  title: "Bank Statement Analyzer",
-  description: "AI-powered bank statement analysis for loan decisions",
-};
+import { ProcessedStatement } from "../lib/types";
 
 export default function Home() {
+  const router = useRouter();
+
+  const handleAnalysisComplete = (result: ProcessedStatement) => {
+    // Save the result to localStorage
+    localStorage.setItem("statementData", JSON.stringify(result));
+    // Navigate to the dashboard
+    router.push("/dashboard");
+  };
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-6 md:p-24">
       <div className="z-10 w-full max-w-5xl items-center justify-between text-sm lg:flex">
@@ -23,8 +29,7 @@ export default function Home() {
             generate insights for loan decisions.
           </p>
 
-          {/* We'll add the file upload component here */}
-          <FileUpload />
+          <FileUpload onAnalysisComplete={handleAnalysisComplete} />
         </div>
       </div>
 

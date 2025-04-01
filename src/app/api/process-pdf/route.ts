@@ -1,54 +1,41 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import { processPDFText } from '@/lib/utils/pdf-utils';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const formData = await request.formData();
-    const file = formData.get("file") as File;
+    const file = formData.get('file') as File;
 
     if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      return NextResponse.json(
+        { error: 'No file provided' },
+        { status: 400 }
+      );
     }
 
-    // For MVP, we'll just return mock data
-    // In a real implementation, we'd parse the PDF and extract meaningful data
-    const mockData = {
-      transactions: [
-        {
-          date: "2023-01-15",
-          description: "DEPOSIT",
-          amount: 2500.0,
-          type: "credit",
-        },
-        {
-          date: "2023-01-18",
-          description: "RENT PAYMENT",
-          amount: 1200.0,
-          type: "debit",
-        },
-        {
-          date: "2023-01-20",
-          description: "GROCERY STORE",
-          amount: 78.45,
-          type: "debit",
-        },
-      ],
-      summary: {
-        totalDeposits: 2500.0,
-        totalWithdrawals: 1278.45,
-        endingBalance: 1221.55,
-      },
-    };
+    // Convert the file to a Buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    // In a real implementation, we would now use OpenAI to analyze the statement
+    // Process the PDF
+    const result = await processPDFText(buffer);
+    
+    // Check if there was an API quota error
+    if (result.metadata.error === 'API quota exceeded') {
+      return NextResponse.json(
+        { 
+          error: 'API quota exceeded. Please try again later or contact support.',
+          result 
+        },
+        { status: 429 }
+      );
+    }
 
-    return NextResponse.json({
-      success: true,
-      data: mockData,
-    });
+    return NextResponse.json(result);
   } catch (error) {
-    console.error("Error processing PDF:", error);
+    console.error('Error processing PDF:', error);
     return NextResponse.json(
-      { error: "Failed to process PDF" },
+      { error: 'Failed to process PDF' },
       { status: 500 }
     );
   }
