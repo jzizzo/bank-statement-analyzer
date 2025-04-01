@@ -6,7 +6,7 @@ import {
   IncomeExpensesChart,
   ExpenseBreakdownChart,
   BalanceTrendChart,
-} from "../components/ui/ChartComponents";
+} from "../../components/ui/ChartComponents";
 
 interface Transaction {
   date: string;

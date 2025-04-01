@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 
-import FileUpload from "./components/ui/FileUpload";
+import FileUpload from "../components/ui/FileUpload";
 
 export const metadata: Metadata = {
   title: "Bank Statement Analyzer",
