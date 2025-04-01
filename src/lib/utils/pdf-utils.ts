@@ -1,6 +1,7 @@
 import * as pdfjsLib from "pdfjs-dist";
 import { RawStatementData, ProcessedStatement } from "../types";
 import { openaiClient } from "../openaiClient";
+import { chartColors } from "../config/colors";
 
 // Initialize PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = require('pdfjs-dist/build/pdf.worker.entry');
@@ -117,16 +118,6 @@ function mergeResults(results: any[]): ProcessedStatement {
 
   // Merge categories
   const categoryMap = new Map();
-  const defaultColors = {
-    'Utilities': '#4299E1',
-    'Food': '#48BB78',
-    'Transport': '#F6AD55',
-    'Entertainment': '#ED64A6',
-    'Shopping': '#9F7AEA',
-    'Healthcare': '#FC8181',
-    'Education': '#4FD1C5',
-    'Other': '#A0AEC0'
-  };
 
   results.forEach(result => {
     if (result.categories) {
@@ -134,8 +125,7 @@ function mergeResults(results: any[]): ProcessedStatement {
         if (!categoryMap.has(category.name)) {
           categoryMap.set(category.name, {
             name: category.name,
-            value: category.value || 0,
-            color: category.color || defaultColors[category.name as keyof typeof defaultColors] || defaultColors.Other
+            value: category.value || 0
           });
         } else {
           const existing = categoryMap.get(category.name);
@@ -145,16 +135,29 @@ function mergeResults(results: any[]): ProcessedStatement {
     }
   });
 
-  // Ensure we have at least one category
-  if (categoryMap.size === 0) {
-    categoryMap.set('Other', {
-      name: 'Other',
-      value: merged.summary.totalWithdrawals,
-      color: defaultColors.Other
-    });
+  // Convert to array and sort by value
+  let categories = Array.from(categoryMap.values()).sort((a, b) => b.value - a.value);
+
+  // Take top 8 categories and group the rest into "Other"
+  if (categories.length > 9) {
+    const topCategories = categories.slice(0, 8);
+    const otherCategories = categories.slice(8);
+    const otherTotal = otherCategories.reduce((sum, cat) => sum + cat.value, 0);
+    
+    categories = [
+      ...topCategories,
+      {
+        name: 'Other',
+        value: otherTotal
+      }
+    ];
   }
 
-  merged.categories = Array.from(categoryMap.values());
+  // Assign colors based on index
+  merged.categories = categories.map((category, index) => ({
+    ...category,
+    color: chartColors[index]
+  }));
 
   // Merge and sort balance trends
   const trendMap = new Map();
@@ -322,8 +325,7 @@ export async function processPDFWithGPT4(pdfText: string): Promise<ProcessedStat
       "categories": [
         {
           "name": string,
-          "value": number,
-          "color": string
+          "value": number
         }
       ],
       "balanceTrend": [
@@ -357,8 +359,7 @@ export async function processPDFWithGPT4(pdfText: string): Promise<ProcessedStat
   "categories": [
     {
       "name": string,
-      "value": number,
-      "color": string
+      "value": number
     }
   ],
   "balanceTrend": [
@@ -401,7 +402,6 @@ Key requirements:
    - Account balance trend (0-100 score)
 6. Return ONLY the JSON object with no formatting
 7. Ensure all numbers are valid JSON numbers (no commas)
-8. Use basic colors for categories (e.g., "#4299E1" for utilities)
 
 Here's the bank statement text:
 

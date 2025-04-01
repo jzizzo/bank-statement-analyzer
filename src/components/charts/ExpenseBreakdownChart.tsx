@@ -13,21 +13,7 @@ interface ExpenseBreakdownChartProps {
 }
 
 export default function ExpenseBreakdownChart({ data }: ExpenseBreakdownChartProps) {
-  const COLORS = [
-    "#ef4444",
-    "#f97316",
-    "#eab308",
-    "#22c55e",
-    "#3b82f6",
-    "#8b5cf6",
-    "#ec4899",
-    "#14b8a6",
-  ];
-
-  const chartData = Object.entries(data.categories).map(([name, amount]) => ({
-    name,
-    value: amount,
-  }));
+  const chartData = data.categories;
 
   return (
     <div className="h-[300px] w-full">
@@ -44,7 +30,10 @@ export default function ExpenseBreakdownChart({ data }: ExpenseBreakdownChartPro
             dataKey="value"
           >
             {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              <Cell 
+                key={`cell-${index}`} 
+                fill={entry.color} 
+              />
             ))}
           </Pie>
           <Tooltip />
