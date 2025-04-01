@@ -30,13 +30,41 @@ export interface StatementSummary {
   endingBalance: number;
 }
 
-export interface ProcessedStatement {
+// Raw data extracted from PDF
+export interface RawStatementData {
   transactions: {
     date: string;
     description: string;
     amount: number;
     type: "credit" | "debit";
   }[];
+  regularPayments: {
+    description: string;
+    amount: number;
+    frequency: "monthly" | "weekly" | "quarterly";
+  }[];
+  categories: {
+    name: string;
+    value: number;
+    color: string;
+  }[];
+  balanceTrend: {
+    date: string;
+    balance: number;
+  }[];
+  metadata: {
+    bankName: string;
+    accountHolder: string;
+    statementPeriod: {
+      start: string;
+      end: string;
+    };
+  };
+}
+
+// Final analysis result
+export interface ProcessedStatement {
+  statements: RawStatementData[];
   summary: {
     totalDeposits: number;
     totalWithdrawals: number;

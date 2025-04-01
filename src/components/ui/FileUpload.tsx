@@ -3,23 +3,23 @@
 import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
-import { ProcessedStatement } from "../../lib/types";
+import { RawStatementData } from "../../lib/types";
 
 interface FileUploadProps {
-  onAnalysisComplete: (result: ProcessedStatement) => void;
+  onAnalysisComplete: (statements: RawStatementData[]) => void;
 }
 
 export default function FileUpload({ onAnalysisComplete }: FileUploadProps) {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadedCount, setUploadedCount] = useState(0);
 
   const router = useRouter();
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length) {
-      const selectedFile = acceptedFiles[0];
-      setFile(selectedFile);
+      setFiles(prev => [...prev, ...acceptedFiles]);
       setError(null);
     }
   }, []);
@@ -29,40 +29,51 @@ export default function FileUpload({ onAnalysisComplete }: FileUploadProps) {
     accept: {
       "application/pdf": [".pdf"],
     },
-    maxFiles: 1,
-    multiple: false,
+    multiple: true,
   });
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!files.length) return;
 
     setIsUploading(true);
     setError(null);
+    setUploadedCount(0);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      const statements: RawStatementData[] = [];
+      
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
 
-      const response = await fetch("/api/process-pdf", {
-        method: "POST",
-        body: formData,
-      });
+        const response = await fetch("/api/process-pdf", {
+          method: "POST",
+          body: formData,
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (response.status === 429) {
-          throw new Error('We\'ve reached our API limit for now. Please try again in a few minutes.');
+        if (!response.ok) {
+          const errorData = await response.json();
+          if (response.status === 429) {
+            throw new Error('We\'ve reached our API limit for now. Please try again in a few minutes.');
+          }
+          throw new Error(errorData.error || 'Failed to process PDF');
         }
-        throw new Error(errorData.error || 'Failed to process PDF');
+
+        const result = await response.json();
+        statements.push(result);
+        setUploadedCount(prev => prev + 1);
       }
 
-      const result = await response.json();
-      onAnalysisComplete(result);
+      onAnalysisComplete(statements);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error processing file. Please try again.");
+      setError(err instanceof Error ? err.message : "Error processing files. Please try again.");
       setIsUploading(false);
     }
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -76,34 +87,47 @@ export default function FileUpload({ onAnalysisComplete }: FileUploadProps) {
         }`}
       >
         <input {...getInputProps()} />
-        {!file ? (
+        {files.length === 0 ? (
           <>
             <p className="text-gray-500 dark:text-gray-400 mb-4">
-              Drag and drop your bank statement PDF here, or click to select
-              files
+              Drag and drop your bank statement PDFs here, or click to select files
             </p>
             <button
               type="button"
               className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded cursor-pointer"
             >
-              Select File
+              Select Files
             </button>
           </>
         ) : (
           <div>
-            <p className="text-green-600 dark:text-green-400 mb-2">
-              File selected: {file.name}
-            </p>
+            <div className="space-y-2 mb-4">
+              {files.map((file, index) => (
+                <div key={index} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-2 rounded">
+                  <span className="text-sm">{file.name}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFile(index);
+                    }}
+                    className="text-red-500 hover:text-red-700"
+                    disabled={isUploading}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
             <div className="flex justify-center space-x-4 mt-4">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setFile(null);
+                  setFiles([]);
                 }}
                 className="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded"
                 disabled={isUploading}
               >
-                Cancel
+                Clear All
               </button>
               <button
                 onClick={(e) => {
@@ -113,7 +137,7 @@ export default function FileUpload({ onAnalysisComplete }: FileUploadProps) {
                 className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
                 disabled={isUploading}
               >
-                {isUploading ? "Processing..." : "Upload"}
+                {isUploading ? `Processing... (${uploadedCount}/${files.length})` : "Upload All"}
               </button>
             </div>
           </div>

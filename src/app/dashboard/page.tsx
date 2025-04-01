@@ -7,48 +7,10 @@ import {
   ExpenseBreakdownChart,
   BalanceTrendChart,
 } from "../../components/ui/ChartComponents";
-
-interface Transaction {
-  date: string;
-  description: string;
-  amount: number;
-  type: "credit" | "debit";
-}
-
-interface Summary {
-  totalDeposits: number;
-  totalWithdrawals: number;
-  endingBalance: number;
-}
-
-interface CategoryData {
-  name: string;
-  value: number;
-  color: string;
-}
-
-interface BalanceTrendData {
-  date: string;
-  balance: number;
-}
-
-interface LoanRecommendation {
-  approved: boolean;
-  score: number;
-  maxAmount: number;
-  reason: string;
-}
-
-interface StatementData {
-  transactions: Transaction[];
-  summary: Summary;
-  categories: CategoryData[];
-  balanceTrend: BalanceTrendData[];
-  loanRecommendation: LoanRecommendation;
-}
+import { ProcessedStatement } from "../../lib/types";
 
 export default function Dashboard() {
-  const [data, setData] = useState<StatementData | null>(null);
+  const [data, setData] = useState<ProcessedStatement | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -83,7 +45,7 @@ export default function Dashboard() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Financial Analysis Dashboard</h1>
           <p className="text-red-600 mt-2">
-            No statement data found. Please upload a bank statement.
+            No statement data found. Please upload bank statements.
           </p>
         </div>
         <Link
@@ -111,7 +73,7 @@ export default function Dashboard() {
             Total Income
           </h3>
           <p className="text-2xl font-bold">
-            ${data.summary.totalDeposits.toFixed(2)}
+            ${data.summary?.totalDeposits?.toFixed(2) || '0.00'}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
@@ -119,7 +81,7 @@ export default function Dashboard() {
             Total Expenses
           </h3>
           <p className="text-2xl font-bold">
-            ${data.summary.totalWithdrawals.toFixed(2)}
+            ${data.summary?.totalWithdrawals?.toFixed(2) || '0.00'}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
@@ -127,7 +89,7 @@ export default function Dashboard() {
             Balance
           </h3>
           <p className="text-2xl font-bold">
-            ${data.summary.endingBalance.toFixed(2)}
+            ${data.summary?.endingBalance?.toFixed(2) || '0.00'}
           </p>
         </div>
       </div>
@@ -137,15 +99,15 @@ export default function Dashboard() {
           <h2 className="text-xl font-bold mb-4">Income vs. Expenses</h2>
           <div className="h-64">
             <IncomeExpensesChart
-              income={data.summary.totalDeposits}
-              expenses={data.summary.totalWithdrawals}
+              income={data.summary?.totalDeposits || 0}
+              expenses={data.summary?.totalWithdrawals || 0}
             />
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h2 className="text-xl font-bold mb-4">Expense Breakdown</h2>
           <div className="h-64">
-            <ExpenseBreakdownChart categories={data.categories} />
+            <ExpenseBreakdownChart categories={data.categories || []} />
           </div>
         </div>
       </div>
@@ -153,7 +115,7 @@ export default function Dashboard() {
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-8">
         <h2 className="text-xl font-bold mb-4">Balance Trend</h2>
         <div className="h-64">
-          <BalanceTrendChart data={data.balanceTrend} />
+          <BalanceTrendChart data={data.balanceTrend || []} />
         </div>
       </div>
 
@@ -161,19 +123,19 @@ export default function Dashboard() {
         <h2 className="text-xl font-bold mb-4">Loan Recommendation</h2>
         <div
           className={`p-4 ${
-            data.loanRecommendation.approved
+            data.loanRecommendation?.approved
               ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30"
               : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30"
           } rounded-lg`}
         >
           <h3
             className={`text-lg font-semibold ${
-              data.loanRecommendation.approved
+              data.loanRecommendation?.approved
                 ? "text-green-700 dark:text-green-400"
                 : "text-red-700 dark:text-red-400"
             }`}
           >
-            {data.loanRecommendation.approved
+            {data.loanRecommendation?.approved
               ? "Recommend Approval"
               : "Not Recommended for Approval"}
           </h3>
@@ -183,80 +145,74 @@ export default function Dashboard() {
               <div className="ml-2 w-full max-w-xs bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
                 <div
                   className={`${
-                    data.loanRecommendation.approved
+                    data.loanRecommendation?.approved
                       ? "bg-green-600"
                       : "bg-red-600"
                   } h-2.5 rounded-full`}
-                  style={{ width: `${data.loanRecommendation.score}%` }}
+                  style={{ width: `${data.loanRecommendation?.score || 0}%` }}
                 ></div>
               </div>
               <span className="ml-2 font-semibold">
-                {data.loanRecommendation.score}%
+                {data.loanRecommendation?.score || 0}%
               </span>
             </div>
             <div className="flex">
               <div className="w-32">Max Amount:</div>
               <div className="font-semibold">
-                ${data.loanRecommendation.maxAmount.toLocaleString()}
+                ${data.loanRecommendation?.maxAmount?.toLocaleString() || '0'}
               </div>
             </div>
             <div className="flex">
               <div className="w-32">Reason:</div>
-              <div>{data.loanRecommendation.reason}</div>
+              <div>{data.loanRecommendation?.reason || 'No reason provided'}</div>
+            </div>
+            
+            <div className="mt-4">
+              <h4 className="font-medium mb-2">Key Factors:</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Income Stability</div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full"
+                      style={{ width: `${data.loanRecommendation?.keyFactors?.incomeStability || 0}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-sm font-semibold">{data.loanRecommendation?.keyFactors?.incomeStability || 0}%</span>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Spending Patterns</div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full"
+                      style={{ width: `${data.loanRecommendation?.keyFactors?.spendingPatterns || 0}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-sm font-semibold">{data.loanRecommendation?.keyFactors?.spendingPatterns || 0}%</span>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Regular Payments</div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full"
+                      style={{ width: `${data.loanRecommendation?.keyFactors?.regularPayments || 0}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-sm font-semibold">{data.loanRecommendation?.keyFactors?.regularPayments || 0}%</span>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Balance Trend</div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full"
+                      style={{ width: `${data.loanRecommendation?.keyFactors?.balanceTrend || 0}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-sm font-semibold">{data.loanRecommendation?.keyFactors?.balanceTrend || 0}%</span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-        <h2 className="text-xl font-bold mb-4">Recent Transactions</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
-                  Date
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
-                  Description
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                >
-                  Amount
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-              {data.transactions.map((transaction, index) => (
-                <tr key={index}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {transaction.date}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                    {transaction.description}
-                  </td>
-                  <td
-                    className={`px-6 py-4 whitespace-nowrap text-sm text-right ${
-                      transaction.type === "credit"
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-red-600 dark:text-red-400"
-                    }`}
-                  >
-                    {transaction.type === "credit" ? "+" : "-"}$
-                    {transaction.amount.toFixed(2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
 
