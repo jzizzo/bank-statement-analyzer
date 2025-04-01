@@ -1,6 +1,22 @@
+/**
+ * API route for processing bank statement PDFs.
+ * This endpoint handles the initial PDF text extraction step of the analysis pipeline.
+ */
+
 import { NextResponse } from 'next/server';
 import { processPDFText } from '@/lib/utils/pdf-utils';
 
+/**
+ * POST endpoint that processes a bank statement PDF file.
+ * 
+ * @route POST /api/process-pdf
+ * @param {Request} request - The incoming request containing the PDF file
+ * @returns {Promise<NextResponse>} Response containing the extracted text or error message
+ * 
+ * @throws {400} If no file is provided
+ * @throws {429} If API quota is exceeded
+ * @throws {500} If PDF processing fails
+ */
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();

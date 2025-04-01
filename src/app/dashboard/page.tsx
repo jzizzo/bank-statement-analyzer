@@ -1,3 +1,9 @@
+/**
+ * Dashboard page component for displaying bank statement analysis results.
+ * This component presents the analyzed data through various visualizations
+ * and provides loan recommendations based on the analysis.
+ */
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -5,6 +11,12 @@ import Analytics from "@/components/Analytics";
 import LoanRecommendation from "@/components/LoanRecommendation";
 import { useStatementData } from "@/lib/hooks/useStatementData";
 
+/**
+ * Dashboard component that displays the analysis results and loan recommendations.
+ * Handles loading states and provides navigation back to the upload page.
+ * 
+ * @returns JSX.Element The rendered dashboard component
+ */
 export default function Dashboard() {
   const router = useRouter();
   const { data, isLoading, clearStatementData } = useStatementData();
@@ -12,6 +24,10 @@ export default function Dashboard() {
   console.log('Dashboard - Current data:', data);
   console.log('Dashboard - Loading state:', isLoading);
 
+  /**
+   * Handles starting a new analysis by clearing existing data
+   * and navigating back to the upload page.
+   */
   const handleNewAnalysis = () => {
     console.log('Dashboard - Starting new analysis');
     clearStatementData();

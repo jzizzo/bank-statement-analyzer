@@ -1,7 +1,24 @@
+/**
+ * API route for analyzing bank statements using GPT-4.
+ * This endpoint performs intelligent analysis of bank statement data to generate
+ * insights, categorize transactions, and provide loan recommendations.
+ */
+
 import { NextResponse } from "next/server";
 import { openaiClient } from "../../../lib/openaiClient";
 import { RawStatementData, ProcessedStatement } from "../../../lib/types";
 
+/**
+ * POST endpoint that analyzes bank statement data using GPT-4.
+ * 
+ * @route POST /api/analyze-statements
+ * @param {Request} request - The incoming request containing the statement data
+ * @returns {Promise<NextResponse>} Response containing the analysis results or error message
+ * 
+ * @throws {400} If no statements are provided or if statement structure is invalid
+ * @throws {400} If statements have inconsistent currencies
+ * @throws {500} If analysis fails
+ */
 export async function POST(request: Request) {
   try {
     const { statements } = await request.json();
@@ -194,6 +211,12 @@ IMPORTANT: Return ONLY the JSON object, without any markdown formatting, code bl
   }
 }
 
+/**
+ * Validates that the provided data matches the RawStatementData structure.
+ * 
+ * @param data - The data to validate
+ * @returns True if the data matches the RawStatementData structure
+ */
 function validateRawStatementData(data: any): data is RawStatementData {
   return (
     data &&

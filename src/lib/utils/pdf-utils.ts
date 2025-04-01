@@ -1,3 +1,9 @@
+/**
+ * Core utilities for processing and analyzing bank statement PDFs.
+ * This module provides functionality to extract, process, and analyze bank statement data
+ * using PDF.js for extraction and OpenAI's GPT-4 for intelligent analysis.
+ */
+
 import * as pdfjsLib from "pdfjs-dist";
 import { RawStatementData, ProcessedStatement } from "../types";
 import { openaiClient } from "../openaiClient";
@@ -6,7 +12,14 @@ import { chartColors } from "../config/colors";
 // Initialize PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = require("pdfjs-dist/build/pdf.worker.entry");
 
-// Helper function to chunk text into smaller pieces
+/**
+ * Splits text content into smaller chunks while preserving transaction boundaries.
+ * This is necessary for processing large bank statements that exceed token limits.
+ * 
+ * @param text - The text content to be chunked
+ * @param maxChunkSize - Maximum size of each chunk (default: 4000 characters)
+ * @returns Array of text chunks, each preserving complete transaction lines
+ */
 function chunkText(text: string, maxChunkSize: number = 4000): string[] {
   const chunks: string[] = [];
   let currentChunk = "";
@@ -35,7 +48,14 @@ function chunkText(text: string, maxChunkSize: number = 4000): string[] {
   return chunks;
 }
 
-// Helper function to merge results from multiple chunks
+/**
+ * Merges results from multiple processed chunks into a single coherent statement analysis.
+ * This function aggregates data from different parts of the bank statement to create
+ * a unified analysis including transactions, summary statistics, and recommendations.
+ * 
+ * @param results - Array of processed results from different chunks
+ * @returns Merged ProcessedStatement object containing complete analysis
+ */
 function mergeResults(results: any[]): ProcessedStatement {
   const merged: ProcessedStatement = {
     statements: [],
@@ -239,6 +259,13 @@ function mergeResults(results: any[]): ProcessedStatement {
   return merged;
 }
 
+/**
+ * Validates the raw statement data to ensure it contains all required fields
+ * and meets the expected format for processing.
+ * 
+ * @param data - Raw statement data to validate
+ * @returns Object containing validation status and error message if invalid
+ */
 function validateStatementData(data: RawStatementData): {
   isValid: boolean;
   error?: string;
@@ -266,6 +293,13 @@ function validateStatementData(data: RawStatementData): {
   return { isValid: true };
 }
 
+/**
+ * Processes a PDF buffer to extract text content.
+ * This is the first step in the bank statement analysis pipeline.
+ * 
+ * @param buffer - PDF file buffer to process
+ * @returns Promise resolving to the extracted text content
+ */
 export async function processPDFText(buffer: Buffer) {
   try {
     // Convert Buffer to Uint8Array
@@ -344,6 +378,14 @@ export async function processPDFText(buffer: Buffer) {
   }
 }
 
+/**
+ * Processes extracted PDF text using GPT-4 to generate intelligent insights.
+ * This function analyzes the bank statement content to identify patterns,
+ * categorize transactions, and provide loan recommendations.
+ * 
+ * @param pdfText - Extracted text content from the PDF
+ * @returns Promise resolving to a ProcessedStatement containing the analysis
+ */
 export async function processPDFWithGPT4(
   pdfText: string
 ): Promise<ProcessedStatement> {

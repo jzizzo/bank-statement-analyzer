@@ -1,4 +1,16 @@
-// Array of 10 visually distinct colors optimized for dark mode
+/**
+ * Color configuration for the bank statement analyzer application.
+ * Defines a set of visually distinct colors optimized for dark mode
+ * and used in various charts and visualizations throughout the app.
+ */
+
+/**
+ * Array of 10 visually distinct colors optimized for dark mode.
+ * Colors are chosen to be accessible and aesthetically pleasing
+ * while maintaining good contrast in both light and dark themes.
+ * 
+ * @type {readonly string[]} Array of hex color codes
+ */
 export const chartColors = [
   '#60a5fa', // Soft blue
   '#f87171', // Soft red
@@ -12,4 +24,8 @@ export const chartColors = [
   '#94a3b8'  // Soft slate (for "Other")
 ] as const;
 
+/**
+ * Type definition for chart color indices.
+ * Represents the valid index range for accessing colors in the chartColors array.
+ */
 export type ChartColorIndex = number; 

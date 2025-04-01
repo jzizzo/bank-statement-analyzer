@@ -1,3 +1,8 @@
+/**
+ * Main page component for the bank statement analyzer application.
+ * This component handles the file upload process and orchestrates the analysis pipeline.
+ */
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -6,12 +11,25 @@ import { RawStatementData, ProcessedStatement } from "../lib/types";
 import { useState } from "react";
 import { useStatementData } from "../lib/hooks/useStatementData";
 
+/**
+ * Home component that serves as the main entry point for the application.
+ * Handles file upload, statement analysis, and navigation to the dashboard.
+ * 
+ * @returns JSX.Element The rendered home page component
+ */
 export default function Home() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { setStatementData, clearStatementData, setIsLoading } = useStatementData();
 
+  /**
+   * Handles the completion of statement analysis.
+   * Processes the analyzed statements and navigates to the dashboard.
+   * 
+   * @param statements - Array of analyzed statement data
+   * @throws Error if analysis fails or API request fails
+   */
   const handleAnalysisComplete = async (statements: RawStatementData[]) => {
     try {
       setError(null);
