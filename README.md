@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bank Statement Analyzer
+
+An intelligent system that analyzes bank statements to provide loan recommendations and financial insights. Built with Next.js and powered by OpenAI's GPT-3.5.
+
+## Overview
+
+This application solves the challenge of manually analyzing bank statements for loan decisions by providing an automated, AI-powered solution. It processes multiple bank statements to:
+
+- Extract and categorize transactions
+- Identify regular payments and recurring expenses
+- Analyze balance trends and account health
+- Generate comprehensive loan recommendations
+- Provide detailed financial insights
+
+## Features
+
+- 📄 **Multi-Statement Analysis**: Process multiple bank statements simultaneously
+- 🤖 **AI-Powered Analysis**: Leverages GPT-3.5 for intelligent financial pattern recognition
+- 📊 **Visual Analytics**: Interactive charts and graphs for financial data visualization
+- 💰 **Loan Recommendations**: Detailed loan approval decisions with scoring and reasoning
+- 🔍 **Regular Payment Detection**: Identifies recurring expenses and payment patterns
+- 📈 **Balance Trend Analysis**: Tracks account balance changes over time
+
+## Tech Stack
+
+- **Framework**: Next.js 14 with App Router
+- **Language**: TypeScript
+- **AI**: OpenAI GPT-3.5
+- **UI**: Modern React components with Tailwind CSS
+- **Data Processing**: PDF parsing and financial data analysis
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository:
+```bash
+git clone [repository-url]
+cd bank-statement-analyzer
+```
 
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Set up environment variables:
+Create a `.env.local` file in the root directory with:
+```
+OPENAI_API_KEY=your_openai_api_key
+```
+
+4. Run the development server:
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Usage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Upload one or more bank statement PDFs
+2. Wait for the AI to analyze the statements
+3. View the comprehensive analysis in the dashboard
+4. Review the loan recommendation and financial insights
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+- `/src/app` - Next.js app router pages and API routes
+- `/src/components` - React components
+- `/src/lib` - Utilities, types, and configurations
+- `/src/types` - TypeScript type definitions
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API Endpoints
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `/api/process-pdf` - Processes uploaded PDF statements
+- `/api/analyze-statements` - Analyzes processed statements and generates insights
 
-## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is licensed under the MIT License - see the LICENSE file for details.
