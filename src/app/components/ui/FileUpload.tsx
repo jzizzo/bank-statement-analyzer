@@ -35,14 +35,23 @@ export default function FileUpload() {
     setError(null);
 
     try {
-      // For now, we'll just simulate processing and redirect
-      // Later we'll implement actual processing
-      console.log(`Processing file: ${file.name}`);
+      const formData = new FormData();
+      formData.append("file", file);
 
-      setTimeout(() => {
-        setIsUploading(false);
-        router.push("/dashboard");
-      }, 2000);
+      const response = await fetch("/api/process-pdf", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to process file");
+      }
+
+      const result = await response.json();
+
+      // For now, we'll just simulate a successful process and redirect
+      localStorage.setItem("statementData", JSON.stringify(result.data));
+      router.push("/dashboard");
     } catch (err) {
       setError("Error processing file. Please try again.");
       setIsUploading(false);
