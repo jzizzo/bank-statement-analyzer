@@ -1,30 +1,40 @@
 import { NextResponse } from "next/server";
-import { openai } from "../../../lib/openai";
+import { openaiClient } from "../../../lib/openaiClient";
 import { RawStatementData, ProcessedStatement } from "../../../lib/types";
 
 export async function POST(request: Request) {
   try {
     const { statements } = await request.json();
+    console.log('Received statements:', JSON.stringify(statements, null, 2));
 
     if (!Array.isArray(statements) || statements.length === 0) {
+      console.error('Invalid statements array:', statements);
       return NextResponse.json(
         { error: "No statements provided" },
         { status: 400 }
       );
     }
 
-    // Prepare a simplified version of the statements for analysis
-    const simplifiedStatements = statements.map(statement => ({
-      transactions: statement.transactions.map(t => ({
-        date: t.date,
-        amount: t.amount,
-        type: t.type,
-        description: t.description
-      })),
-      summary: statement.summary,
-      categories: statement.categories,
-      balanceTrend: statement.balanceTrend
-    }));
+    // Validate each statement has the required structure
+    const invalidStatements = statements.filter((statement: RawStatementData) => 
+      !validateRawStatementData(statement)
+    );
+
+    if (invalidStatements.length > 0) {
+      console.error('Invalid statement structure:', invalidStatements);
+      return NextResponse.json(
+        { error: "Invalid statement structure" },
+        { status: 400 }
+      );
+    }
+
+    // Combine all statements into a single analysis
+    const combinedStatement: RawStatementData = {
+      regularPayments: statements.flatMap(s => s.regularPayments),
+      categories: statements[0].categories, // Use categories from first statement
+      balanceTrend: statements[0].balanceTrend, // Use balance trend from first statement
+      metadata: statements[0].metadata // Use metadata from first statement
+    };
 
     // Prepare the data for GPT analysis
     const analysisPrompt = `Analyze these bank statements and provide a comprehensive loan recommendation. Consider:
@@ -50,7 +60,7 @@ export async function POST(request: Request) {
    - Payment amounts
 
 Statements Data:
-${JSON.stringify(simplifiedStatements, null, 2)}
+${JSON.stringify(combinedStatement, null, 2)}
 
 Return a JSON object with:
 {
@@ -103,7 +113,7 @@ Return a JSON object with:
 
 IMPORTANT: Return ONLY the JSON object, without any markdown formatting, code blocks, or additional text.`;
 
-    const completion = await openai.chat.completions.create({
+    const completion = await openaiClient.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
@@ -115,55 +125,81 @@ IMPORTANT: Return ONLY the JSON object, without any markdown formatting, code bl
           content: analysisPrompt
         }
       ],
-      max_tokens: 4096, // Increased token limit
+      max_tokens: 4096,
       temperature: 0.1,
     });
 
     let content = completion.choices[0].message.content || '{}';
+    console.log('Raw GPT response:', content);
     
     // Clean the content by removing markdown code blocks and other formatting
     content = content
-      .replace(/```json\s*/, '') // Remove opening json code block
-      .replace(/```\s*$/, '')    // Remove closing code block
-      .replace(/`/g, '')         // Remove any remaining backticks
-      .trim();                   // Remove extra whitespace
+      .replace(/```json\s*/, '')
+      .replace(/```\s*$/, '')
+      .replace(/`/g, '')
+      .trim();
 
     console.log('Cleaned GPT response:', content);
 
-    // Try to fix truncated JSON if needed
-    if (content.includes('"balanceTrend": [') && !content.endsWith('}')) {
-      // Find the last complete balance trend entry
-      const lastBalanceMatch = content.match(/"date": "[^"]+",\s*"balance": \d+\.?\d*/g);
-      if (lastBalanceMatch) {
-        const lastEntry = lastBalanceMatch[lastBalanceMatch.length - 1];
-        const lastEntryIndex = content.lastIndexOf(lastEntry);
-        if (lastEntryIndex !== -1) {
-          // Truncate at the last complete entry and close the JSON properly
-          content = content.substring(0, lastEntryIndex + lastEntry.length) + '}]}';
-        }
+    try {
+      const result = JSON.parse(content);
+      console.log('Parsed result:', JSON.stringify(result, null, 2));
+
+      // Validate the result structure
+      if (!result.summary || !result.categories || !result.balanceTrend || !result.loanRecommendation || !result.metadata) {
+        console.error('Invalid response structure:', result);
+        throw new Error('Invalid response format from GPT');
       }
+
+      // Transform the data to match our ProcessedStatement type
+      const processedStatement: ProcessedStatement = {
+        summary: result.summary,
+        categories: result.categories,
+        balanceTrend: result.balanceTrend,
+        loanRecommendation: result.loanRecommendation,
+        metadata: result.metadata
+      };
+
+      return NextResponse.json(processedStatement);
+    } catch (parseError) {
+      console.error('Error parsing GPT response:', parseError);
+      console.error('Content that failed to parse:', content);
+      throw new Error('Failed to parse GPT response');
     }
-
-    const result = JSON.parse(content);
-
-    // Validate the result structure
-    if (!result.summary || !result.categories || !result.balanceTrend || !result.loanRecommendation || !result.metadata) {
-      console.error('Invalid response structure:', result);
-      throw new Error('Invalid response format from GPT');
-    }
-
-    // Add the raw statements to the result
-    const finalResult: ProcessedStatement = {
-      ...result,
-      statements
-    };
-
-    return NextResponse.json(finalResult);
   } catch (error) {
     console.error("Error analyzing statements:", error);
     return NextResponse.json(
-      { error: "Failed to analyze statements" },
+      { error: error instanceof Error ? error.message : "Failed to analyze statements" },
       { status: 500 }
     );
   }
+}
+
+function validateRawStatementData(data: any): data is RawStatementData {
+  return (
+    data &&
+    Array.isArray(data.regularPayments) &&
+    data.regularPayments.every((rp: any) =>
+      typeof rp.description === "string" &&
+      typeof rp.amount === "number" &&
+      typeof rp.frequency === "string"
+    ) &&
+    Array.isArray(data.categories) &&
+    data.categories.every((cat: any) =>
+      typeof cat.name === "string" &&
+      typeof cat.value === "number" &&
+      typeof cat.color === "string"
+    ) &&
+    Array.isArray(data.balanceTrend) &&
+    data.balanceTrend.every((bt: any) =>
+      typeof bt.date === "string" &&
+      typeof bt.balance === "number"
+    ) &&
+    data.metadata &&
+    typeof data.metadata.bankName === "string" &&
+    typeof data.metadata.accountHolder === "string" &&
+    data.metadata.statementPeriod &&
+    typeof data.metadata.statementPeriod.start === "string" &&
+    typeof data.metadata.statementPeriod.end === "string"
+  );
 } 

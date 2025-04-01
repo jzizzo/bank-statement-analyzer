@@ -1,13 +1,9 @@
-import * as pdfjsLib from 'pdfjs-dist';
-import OpenAI from 'openai';
-import { ProcessedStatement } from '../types';
+import * as pdfjsLib from "pdfjs-dist";
+import { RawStatementData, ProcessedStatement } from "../types";
+import { openaiClient } from "../openaiClient";
 
 // Initialize PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = require('pdfjs-dist/build/pdf.worker.entry');
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 // Helper function to chunk text into smaller pieces
 function chunkText(text: string, maxChunkSize: number = 4000): string[] {
@@ -41,7 +37,7 @@ function chunkText(text: string, maxChunkSize: number = 4000): string[] {
 // Helper function to merge results from multiple chunks
 function mergeResults(results: any[]): ProcessedStatement {
   const merged: ProcessedStatement = {
-    transactions: [], // Keep empty for backward compatibility
+    statements: [],
     summary: {
       totalDeposits: 0,
       totalWithdrawals: 0,
@@ -74,6 +70,25 @@ function mergeResults(results: any[]): ProcessedStatement {
 
   // Track if we have any partial results
   let hasPartialResults = false;
+
+  // Collect raw statements
+  results.forEach(result => {
+    if (result.regularPayments) {
+      merged.statements.push({
+        regularPayments: result.regularPayments || [],
+        categories: result.categories || [],
+        balanceTrend: result.balanceTrend || [],
+        metadata: {
+          bankName: result.metadata?.bankName || "Unknown",
+          accountHolder: result.metadata?.accountHolder || "Unknown",
+          statementPeriod: {
+            start: result.metadata?.statementPeriod?.start || "Unknown",
+            end: result.metadata?.statementPeriod?.end || "Unknown"
+          }
+        }
+      });
+    }
+  });
 
   // Merge summaries and regular payments
   const regularPaymentsMap = new Map();
@@ -191,227 +206,142 @@ function mergeResults(results: any[]): ProcessedStatement {
   return merged;
 }
 
+function validateStatementData(data: RawStatementData): { isValid: boolean; error?: string } {
+  // Check for required metadata
+  if (!data.metadata?.bankName || !data.metadata?.accountHolder) {
+    return { isValid: false, error: "Missing required metadata" };
+  }
+
+  // Check for required regular payments
+  if (!data.regularPayments || !Array.isArray(data.regularPayments)) {
+    return { isValid: false, error: "Missing regular payments data" };
+  }
+
+  // Check for required categories
+  if (!data.categories || !Array.isArray(data.categories)) {
+    return { isValid: false, error: "Missing categories data" };
+  }
+
+  // Check for required balance trend
+  if (!data.balanceTrend || !Array.isArray(data.balanceTrend)) {
+    return { isValid: false, error: "Missing balance trend data" };
+  }
+
+  return { isValid: true };
+}
+
 export async function processPDFText(buffer: Buffer) {
   try {
-    // Convert Buffer to Uint8Array for PDF.js
+    // Convert Buffer to Uint8Array
     const uint8Array = new Uint8Array(buffer);
     
     // Load the PDF document
-    const loadingTask = pdfjsLib.getDocument(uint8Array);
-    const pdf = await loadingTask.promise;
-    
-    // Extract text from all pages
-    let fullText = '';
+    const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
+    let fullText = "";
+
+    // Extract text from each page
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items
         .map((item: any) => item.str)
-        .join(' ');
-      fullText += pageText + '\n';
+        .join(" ");
+      fullText += pageText + "\n";
     }
 
-    try {
-      // Split text into chunks
-      const chunks = chunkText(fullText);
-      const results = [];
+    // Log the extracted text for debugging
+    console.log('Extracted text length:', fullText.length);
+    console.log('First 500 characters:', fullText.substring(0, 500));
 
-      // Process each chunk
-      for (const chunk of chunks) {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content: "You are a financial analyst specializing in bank statement analysis. Extract key financial metrics and provide loan recommendations based on spending patterns and income stability. Return data in a clean JSON format with no additional text or formatting. IMPORTANT: If you cannot process all transactions in the input, process as many as you can and include a 'partial' flag in the response."
-            },
-            {
-              role: "user",
-              content: `Analyze this bank statement text and return ONLY the following key metrics in JSON format:
+    // Process the text with GPT
+    const result = await processPDFWithGPT4(fullText);
 
-{
-  "summary": {
-    "totalDeposits": number,
-    "totalWithdrawals": number,
-    "endingBalance": number,
-    "regularPayments": [
-      {
-        "description": "string",
-        "amount": number,
-        "frequency": "monthly" | "weekly" | "quarterly"
-      }
-    ]
-  },
-  "categories": [
-    {
-      "name": string,
-      "value": number,
-      "color": string
-    }
-  ],
-  "balanceTrend": [
-    {
-      "date": "YYYY-MM-DD",
-      "balance": number
-    }
-  ],
-  "loanRecommendation": {
-    "approved": boolean,
-    "score": number,
-    "maxAmount": number,
-    "reason": string,
-    "keyFactors": {
-      "incomeStability": number,
-      "spendingPatterns": number,
-      "regularPayments": number,
-      "balanceTrend": number
-    }
-  },
-  "metadata": {
-    "bankName": string,
-    "accountHolder": string,
-    "statementPeriod": {
-      "start": "YYYY-MM-DD",
-      "end": "YYYY-MM-DD"
-    }
-  },
-  "partial": boolean
-}
+    // Log the GPT result for debugging
+    console.log('GPT result:', JSON.stringify(result, null, 2));
 
-Key requirements:
-1. Focus on identifying regular payments and their frequencies
-2. Calculate total deposits and withdrawals
-3. Group expenses into meaningful categories (e.g., Utilities, Food, Transport)
-4. Track balance trend over time (monthly points)
-5. Assess loan eligibility based on:
-   - Income stability (0-100 score)
-   - Spending patterns (0-100 score)
-   - Regular payments (0-100 score)
-   - Account balance trend (0-100 score)
-6. Return ONLY the JSON object with no formatting
-7. Ensure all numbers are valid JSON numbers (no commas)
-8. Use basic colors for categories (e.g., "#4299E1" for utilities)
-9. Set "partial": true if you could not process all transactions in the input
-
-Here's the bank statement text:
-
-${chunk}`
-            }
-          ],
-          max_tokens: 2048,
-          temperature: 0.1,
-        });
-
-        let result;
-        let cleanContent = '';
-        try {
-          const content = completion.choices[0].message.content || '{}';
-          // Clean the content more thoroughly
-          cleanContent = content
-            .replace(/```json\n?|\n?```/g, '')
-            .replace(/[\u200B-\u200D\uFEFF]/g, '')
-            .replace(/\u2028|\u2029/g, '\n')
-            .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
-            .replace(/,(\s*[}\]])/g, '$1')
-            // Fix numbers with multiple decimal points
-            .replace(/"balance":\s*(\d+\.\d+\.\d+)/g, (match, num) => {
-              // Remove all decimal points except the last one
-              const parts = num.split('.');
-              return `"balance": ${parts[0]}.${parts.slice(1).join('')}`;
-            })
-            // Fix numbers with commas
-            .replace(/(\d+),(\d{3})/g, '$1$2')
-            .trim();
-          
-          result = JSON.parse(cleanContent);
-
-          // Ensure required fields exist with default values
-          result.summary = result.summary || {};
-          result.summary.totalDeposits = result.summary.totalDeposits || 0;
-          result.summary.totalWithdrawals = result.summary.totalWithdrawals || 0;
-          result.summary.endingBalance = result.summary.endingBalance || 0;
-          result.categories = result.categories || [];
-          result.balanceTrend = result.balanceTrend || [];
-          result.loanRecommendation = result.loanRecommendation || {
-            approved: false,
-            score: 0,
-            maxAmount: 0,
-            reason: "Insufficient data"
-          };
-        } catch (parseError) {
-          console.error('Error parsing GPT response:', parseError);
-          console.error('Raw response:', completion.choices[0].message.content);
-          console.error('Cleaned content length:', cleanContent.length);
-          throw new Error('Failed to parse GPT response as JSON');
+    // Convert ProcessedStatement to RawStatementData
+    const rawStatement: RawStatementData = {
+      regularPayments: result.statements?.[0]?.regularPayments || result.summary?.regularPayments || [],
+      categories: result.statements?.[0]?.categories || result.categories || [],
+      balanceTrend: result.statements?.[0]?.balanceTrend || result.balanceTrend || [],
+      metadata: result.statements?.[0]?.metadata || result.metadata || {
+        bankName: "Unknown",
+        accountHolder: "Unknown",
+        statementPeriod: {
+          start: "",
+          end: ""
         }
-        
-        // Validate the result structure
-        if (!result.summary || !result.categories || !result.balanceTrend || !result.loanRecommendation || !result.metadata) {
-          console.error('Invalid response structure:', result);
-          throw new Error('Invalid response format from GPT-4');
-        }
-
-        results.push(result);
       }
+    };
 
-      // Merge results from all chunks
-      return mergeResults(results);
-    } catch (apiError: any) {
-      // Handle API quota errors
-      if (apiError.code === 'insufficient_quota') {
-        return {
-          transactions: [],
-          summary: {
-            totalDeposits: 0,
-            totalWithdrawals: 0,
-            endingBalance: 0
-          },
-          categories: [{
-            name: 'Other',
-            value: 0,
-            color: '#A0AEC0'
-          }],
-          balanceTrend: [],
-          loanRecommendation: {
-            approved: false,
-            score: 0,
-            maxAmount: 0,
-            reason: "API quota exceeded"
-          },
-          metadata: {
-            bankName: "Unknown",
-            accountHolder: "Unknown",
-            statementPeriod: {
-              start: "Unknown",
-              end: "Unknown"
-            }
-          }
-        };
-      }
-      throw apiError;
+    // Log the raw statement for debugging
+    console.log('Raw statement:', JSON.stringify(rawStatement, null, 2));
+
+    // Validate the raw statement data
+    const validation = validateStatementData(rawStatement);
+    if (!validation.isValid) {
+      throw new Error(validation.error || "Invalid statement data");
     }
+
+    return rawStatement;
   } catch (error) {
-    console.error('Error processing PDF:', error);
+    console.error("Error processing PDF:", error);
     throw error;
   }
 }
 
-export async function processPDFWithGPT4(
-  pdfText: string
-): Promise<ProcessedStatement> {
+export async function processPDFWithGPT4(pdfText: string): Promise<ProcessedStatement> {
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: "You are a financial analyst specializing in bank statement analysis. Extract key financial metrics and provide loan recommendations based on spending patterns and income stability. Return data in a clean JSON format with no additional text or formatting."
-        },
-        {
-          role: "user",
-          content: `Analyze this bank statement text and return ONLY the following key metrics in JSON format:
+    // Split text into chunks
+    const chunks = chunkText(pdfText);
+    const results = [];
+
+    // Process each chunk
+    for (const chunk of chunks) {
+      const completion = await openaiClient.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "You are a financial analyst specializing in bank statement analysis. Extract key financial metrics and provide loan recommendations based on spending patterns and income stability. Return data in a clean JSON format with no additional text or formatting."
+          },
+          {
+            role: "user",
+            content: `Analyze this bank statement text and return ONLY the following key metrics in JSON format:
 
 {
+  "statements": [
+    {
+      "regularPayments": [
+        {
+          "description": "string",
+          "amount": number,
+          "frequency": "monthly" | "weekly" | "quarterly"
+        }
+      ],
+      "categories": [
+        {
+          "name": string,
+          "value": number,
+          "color": string
+        }
+      ],
+      "balanceTrend": [
+        {
+          "date": "YYYY-MM-DD",
+          "balance": number
+        }
+      ],
+      "metadata": {
+        "bankName": string,
+        "accountHolder": string,
+        "statementPeriod": {
+          "start": "YYYY-MM-DD",
+          "end": "YYYY-MM-DD"
+        }
+      }
+    }
+  ],
   "summary": {
     "totalDeposits": number,
     "totalWithdrawals": number,
@@ -475,54 +405,70 @@ Key requirements:
 
 Here's the bank statement text:
 
-${pdfText}`
-        }
-      ],
-      max_tokens: 2048,
-      temperature: 0.1,
-    });
+${chunk}`
+          }
+        ],
+        max_tokens: 2048,
+        temperature: 0.1,
+      });
 
-    // Parse and validate the response
-    const result = JSON.parse(response.choices[0].message.content || '{}');
-    
-    // Basic validation
-    if (!result.summary || !result.categories || !result.balanceTrend || !result.loanRecommendation || !result.metadata) {
-      throw new Error('Invalid response format from GPT-4');
-    }
+      let result;
+      let cleanContent = '';
+      try {
+        const content = completion.choices[0].message.content || '{}';
+        // Clean the content more thoroughly
+        cleanContent = content
+          .replace(/```json\n?|\n?```/g, '')
+          .replace(/[\u200B-\u200D\uFEFF]/g, '')
+          .replace(/\u2028|\u2029/g, '\n')
+          .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+          .replace(/,(\s*[}\]])/g, '$1')
+          // Fix numbers with multiple decimal points
+          .replace(/"balance":\s*(\d+\.\d+\.\d+)/g, (match, num) => {
+            // Remove all decimal points except the last one
+            const parts = num.split('.');
+            return `"balance": ${parts[0]}.${parts.slice(1).join('')}`;
+          })
+          // Fix numbers with commas
+          .replace(/(\d+),(\d{3})/g, '$1$2')
+          .trim();
+        
+        result = JSON.parse(cleanContent);
 
-    return result as ProcessedStatement;
-  } catch (error: any) {
-    // Handle API quota errors
-    if (error.code === 'insufficient_quota') {
-      return {
-        transactions: [],
-        summary: {
-          totalDeposits: 0,
-          totalWithdrawals: 0,
-          endingBalance: 0
-        },
-        categories: [{
-          name: 'Other',
-          value: 0,
-          color: '#A0AEC0'
-        }],
-        balanceTrend: [],
-        loanRecommendation: {
+        // Ensure required fields exist with default values
+        result.statements = result.statements || [];
+        result.summary = result.summary || {};
+        result.summary.totalDeposits = result.summary.totalDeposits || 0;
+        result.summary.totalWithdrawals = result.summary.totalWithdrawals || 0;
+        result.summary.endingBalance = result.summary.endingBalance || 0;
+        result.categories = result.categories || [];
+        result.balanceTrend = result.balanceTrend || [];
+        result.loanRecommendation = result.loanRecommendation || {
           approved: false,
           score: 0,
           maxAmount: 0,
-          reason: "API quota exceeded"
-        },
-        metadata: {
-          bankName: "Unknown",
-          accountHolder: "Unknown",
-          statementPeriod: {
-            start: "Unknown",
-            end: "Unknown"
-          }
-        }
-      };
+          reason: "Insufficient data"
+        };
+      } catch (parseError) {
+        console.error('Error parsing GPT response:', parseError);
+        console.error('Raw response:', completion.choices[0].message.content);
+        console.error('Cleaned content length:', cleanContent.length);
+        throw new Error('Failed to parse GPT response as JSON');
+      }
+      
+      // Validate the result structure
+      if (!result.statements || !result.summary || !result.categories || !result.balanceTrend || !result.loanRecommendation || !result.metadata) {
+        console.error('Invalid response structure:', result);
+        throw new Error('Invalid response format from GPT-4');
+      }
+
+      results.push(result);
     }
+
+    // Merge results from all chunks
+    return mergeResults(results);
+  } catch (error) {
+    console.error("Error processing PDF text:", error);
     throw error;
   }
 } 

@@ -4,12 +4,25 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import FileUpload from "../components/ui/FileUpload";
 import { RawStatementData, ProcessedStatement } from "../lib/types";
+import { useState } from "react";
+import { useStatementData } from "../lib/hooks/useStatementData";
 
 export default function Home() {
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const { setStatementData, clearStatementData } = useStatementData();
 
   const handleAnalysisComplete = async (statements: RawStatementData[]) => {
     try {
+      setError(null);
+      setIsAnalyzing(true);
+      
+      console.log('handleAnalysisComplete - Starting analysis with statements:', statements);
+      
+      // Clear any existing data before starting new analysis
+      clearStatementData();
+
       // Send all statements for final analysis
       const response = await fetch("/api/analyze-statements", {
         method: "POST",
@@ -20,18 +33,39 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to analyze statements");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to analyze statements");
       }
 
       const result: ProcessedStatement = await response.json();
+      console.log('handleAnalysisComplete - Received result:', result);
       
-      // Save the result to localStorage
-      localStorage.setItem("statementData", JSON.stringify(result));
-      // Navigate to the dashboard
+      // Create a properly structured ProcessedStatement object
+      const processedData: ProcessedStatement = {
+        statements: [{
+          regularPayments: result.summary.regularPayments,
+          categories: result.categories,
+          balanceTrend: result.balanceTrend,
+          metadata: result.metadata
+        }],
+        summary: result.summary,
+        categories: result.categories,
+        balanceTrend: result.balanceTrend,
+        loanRecommendation: result.loanRecommendation,
+        metadata: result.metadata
+      };
+
+      console.log('handleAnalysisComplete - Setting processed data:', processedData);
+      // Set the data using our hook
+      setStatementData(processedData);
+      
+      // Navigate to dashboard
       router.push("/dashboard");
     } catch (error) {
       console.error("Error analyzing statements:", error);
-      // Handle error appropriately
+      setError(error instanceof Error ? error.message : "Failed to analyze statements");
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -48,6 +82,18 @@ export default function Home() {
             Upload multiple bank statement PDFs to analyze financial patterns across time
             and generate insights for loan decisions.
           </p>
+
+          {error && (
+            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
+            </div>
+          )}
+
+          {isAnalyzing && (
+            <div className="mb-4 p-4 bg-blue-100 border border-blue-400 text-blue-700 rounded">
+              Analyzing statements... This may take a few minutes.
+            </div>
+          )}
 
           <FileUpload onAnalysisComplete={handleAnalysisComplete} />
         </div>

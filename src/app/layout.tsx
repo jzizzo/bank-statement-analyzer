@@ -1,17 +1,21 @@
-import { metadata } from './metadata';
+import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Script from 'next/script';
+import { StatementProvider } from "../lib/providers/StatementProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export { metadata };
+export const metadata: Metadata = {
+  title: "Bank Statement Analyzer",
+  description: "Analyze bank statements and get loan recommendations",
+};
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
       <head>
@@ -24,7 +28,11 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <StatementProvider>
+          {children}
+        </StatementProvider>
+      </body>
     </html>
   );
 }
