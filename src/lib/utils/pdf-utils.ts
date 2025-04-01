@@ -4,16 +4,16 @@ import { openaiClient } from "../openaiClient";
 import { chartColors } from "../config/colors";
 
 // Initialize PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = require('pdfjs-dist/build/pdf.worker.entry');
+pdfjsLib.GlobalWorkerOptions.workerSrc = require("pdfjs-dist/build/pdf.worker.entry");
 
 // Helper function to chunk text into smaller pieces
 function chunkText(text: string, maxChunkSize: number = 4000): string[] {
   const chunks: string[] = [];
-  let currentChunk = '';
-  
+  let currentChunk = "";
+
   // Split by newlines to preserve transaction boundaries
-  const lines = text.split('\n');
-  
+  const lines = text.split("\n");
+
   for (const line of lines) {
     // If adding this line would exceed the chunk size, start a new chunk
     if ((currentChunk + line).length > maxChunkSize) {
@@ -23,15 +23,15 @@ function chunkText(text: string, maxChunkSize: number = 4000): string[] {
       }
       currentChunk = line;
     } else {
-      currentChunk += (currentChunk ? '\n' : '') + line;
+      currentChunk += (currentChunk ? "\n" : "") + line;
     }
   }
-  
+
   // Add the last chunk if it's not empty
   if (currentChunk.trim()) {
     chunks.push(currentChunk.trim());
   }
-  
+
   return chunks;
 }
 
@@ -43,7 +43,7 @@ function mergeResults(results: any[]): ProcessedStatement {
       totalDeposits: 0,
       totalWithdrawals: 0,
       endingBalance: 0,
-      regularPayments: []
+      regularPayments: [],
     },
     categories: [],
     balanceTrend: [],
@@ -56,24 +56,25 @@ function mergeResults(results: any[]): ProcessedStatement {
         incomeStability: 0,
         spendingPatterns: 0,
         regularPayments: 0,
-        balanceTrend: 0
-      }
+        balanceTrend: 0,
+      },
     },
     metadata: {
       bankName: "Unknown",
       accountHolder: "Unknown",
+      currency: "USD",
       statementPeriod: {
         start: "Unknown",
-        end: "Unknown"
-      }
-    }
+        end: "Unknown",
+      },
+    },
   };
 
   // Track if we have any partial results
   let hasPartialResults = false;
 
   // Collect raw statements
-  results.forEach(result => {
+  results.forEach((result) => {
     if (result.regularPayments) {
       merged.statements.push({
         regularPayments: result.regularPayments || [],
@@ -82,18 +83,19 @@ function mergeResults(results: any[]): ProcessedStatement {
         metadata: {
           bankName: result.metadata?.bankName || "Unknown",
           accountHolder: result.metadata?.accountHolder || "Unknown",
+          currency: result.metadata?.currency || "USD",
           statementPeriod: {
             start: result.metadata?.statementPeriod?.start || "Unknown",
-            end: result.metadata?.statementPeriod?.end || "Unknown"
-          }
-        }
+            end: result.metadata?.statementPeriod?.end || "Unknown",
+          },
+        },
       });
     }
   });
 
   // Merge summaries and regular payments
   const regularPaymentsMap = new Map();
-  results.forEach(result => {
+  results.forEach((result) => {
     if (result.summary) {
       merged.summary.totalDeposits += result.summary.totalDeposits || 0;
       merged.summary.totalWithdrawals += result.summary.totalWithdrawals || 0;
@@ -119,13 +121,13 @@ function mergeResults(results: any[]): ProcessedStatement {
   // Merge categories
   const categoryMap = new Map();
 
-  results.forEach(result => {
+  results.forEach((result) => {
     if (result.categories) {
       result.categories.forEach((category: any) => {
         if (!categoryMap.has(category.name)) {
           categoryMap.set(category.name, {
             name: category.name,
-            value: category.value || 0
+            value: category.value || 0,
           });
         } else {
           const existing = categoryMap.get(category.name);
@@ -136,32 +138,34 @@ function mergeResults(results: any[]): ProcessedStatement {
   });
 
   // Convert to array and sort by value
-  let categories = Array.from(categoryMap.values()).sort((a, b) => b.value - a.value);
+  let categories = Array.from(categoryMap.values()).sort(
+    (a, b) => b.value - a.value
+  );
 
   // Take top 8 categories and group the rest into "Other"
   if (categories.length > 9) {
     const topCategories = categories.slice(0, 8);
     const otherCategories = categories.slice(8);
     const otherTotal = otherCategories.reduce((sum, cat) => sum + cat.value, 0);
-    
+
     categories = [
       ...topCategories,
       {
-        name: 'Other',
-        value: otherTotal
-      }
+        name: "Other",
+        value: otherTotal,
+      },
     ];
   }
 
   // Assign colors based on index
   merged.categories = categories.map((category, index) => ({
     ...category,
-    color: chartColors[index]
+    color: chartColors[index],
   }));
 
   // Merge and sort balance trends
   const trendMap = new Map();
-  results.forEach(result => {
+  results.forEach((result) => {
     if (result.balanceTrend) {
       result.balanceTrend.forEach((trend: any) => {
         if (!trendMap.has(trend.date)) {
@@ -170,14 +174,17 @@ function mergeResults(results: any[]): ProcessedStatement {
       });
     }
   });
-  merged.balanceTrend = Array.from(trendMap.values()).sort((a, b) => 
-    new Date(a.date).getTime() - new Date(b.date).getTime()
+  merged.balanceTrend = Array.from(trendMap.values()).sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
   // Use the best loan recommendation with key factors
   let bestScore = 0;
-  results.forEach(result => {
-    if (result.loanRecommendation && result.loanRecommendation.score > bestScore) {
+  results.forEach((result) => {
+    if (
+      result.loanRecommendation &&
+      result.loanRecommendation.score > bestScore
+    ) {
       bestScore = result.loanRecommendation.score;
       merged.loanRecommendation = {
         ...result.loanRecommendation,
@@ -185,31 +192,57 @@ function mergeResults(results: any[]): ProcessedStatement {
           incomeStability: 0,
           spendingPatterns: 0,
           regularPayments: 0,
-          balanceTrend: 0
-        }
+          balanceTrend: 0,
+        },
       };
     }
   });
 
   // Use the most complete metadata
-  results.forEach(result => {
+  results.forEach((result) => {
     if (result.metadata) {
-      if (result.metadata.bankName !== "Unknown") merged.metadata.bankName = result.metadata.bankName;
-      if (result.metadata.accountHolder !== "Unknown") merged.metadata.accountHolder = result.metadata.accountHolder;
-      if (result.metadata.statementPeriod.start !== "Unknown") merged.metadata.statementPeriod.start = result.metadata.statementPeriod.start;
-      if (result.metadata.statementPeriod.end !== "Unknown") merged.metadata.statementPeriod.end = result.metadata.statementPeriod.end;
+      if (result.metadata.bankName && result.metadata.bankName !== "Unknown") {
+        merged.metadata.bankName = result.metadata.bankName;
+      }
+      if (
+        result.metadata.accountHolder &&
+        result.metadata.accountHolder !== "Unknown"
+      ) {
+        merged.metadata.accountHolder = result.metadata.accountHolder;
+      }
+      if (result.metadata.currency && result.metadata.currency !== "USD") {
+        merged.metadata.currency = result.metadata.currency;
+      }
+      if (
+        result.metadata.statementPeriod?.start &&
+        result.metadata.statementPeriod.start !== "Unknown"
+      ) {
+        merged.metadata.statementPeriod.start =
+          result.metadata.statementPeriod.start;
+      }
+      if (
+        result.metadata.statementPeriod?.end &&
+        result.metadata.statementPeriod.end !== "Unknown"
+      ) {
+        merged.metadata.statementPeriod.end =
+          result.metadata.statementPeriod.end;
+      }
     }
   });
 
   // If we have partial results, update the loan recommendation reason
   if (hasPartialResults) {
-    merged.loanRecommendation.reason += " (Analysis based on partial statement data)";
+    merged.loanRecommendation.reason +=
+      " (Analysis based on partial statement data)";
   }
 
   return merged;
 }
 
-function validateStatementData(data: RawStatementData): { isValid: boolean; error?: string } {
+function validateStatementData(data: RawStatementData): {
+  isValid: boolean;
+  error?: string;
+} {
   // Check for required metadata
   if (!data.metadata?.bankName || !data.metadata?.accountHolder) {
     return { isValid: false, error: "Missing required metadata" };
@@ -237,7 +270,7 @@ export async function processPDFText(buffer: Buffer) {
   try {
     // Convert Buffer to Uint8Array
     const uint8Array = new Uint8Array(buffer);
-    
+
     // Load the PDF document
     const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
     let fullText = "";
@@ -246,39 +279,57 @@ export async function processPDFText(buffer: Buffer) {
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(" ");
+      const pageText = textContent.items.map((item: any) => item.str).join(" ");
       fullText += pageText + "\n";
     }
 
     // Log the extracted text for debugging
-    console.log('Extracted text length:', fullText.length);
-    console.log('First 500 characters:', fullText.substring(0, 500));
+    console.log("Extracted text length:", fullText.length);
+    console.log("First 500 characters:", fullText.substring(0, 500));
 
     // Process the text with GPT
     const result = await processPDFWithGPT4(fullText);
 
     // Log the GPT result for debugging
-    console.log('GPT result:', JSON.stringify(result, null, 2));
+    console.log("GPT result:", JSON.stringify(result, null, 2));
 
     // Convert ProcessedStatement to RawStatementData
     const rawStatement: RawStatementData = {
-      regularPayments: result.statements?.[0]?.regularPayments || result.summary?.regularPayments || [],
+      regularPayments:
+        result.statements?.[0]?.regularPayments ||
+        result.summary?.regularPayments ||
+        [],
       categories: result.statements?.[0]?.categories || result.categories || [],
-      balanceTrend: result.statements?.[0]?.balanceTrend || result.balanceTrend || [],
-      metadata: result.statements?.[0]?.metadata || result.metadata || {
-        bankName: "Unknown",
-        accountHolder: "Unknown",
+      balanceTrend:
+        result.statements?.[0]?.balanceTrend || result.balanceTrend || [],
+      metadata: {
+        bankName:
+          result.statements?.[0]?.metadata?.bankName ||
+          result.metadata?.bankName ||
+          "Unknown",
+        accountHolder:
+          result.statements?.[0]?.metadata?.accountHolder ||
+          result.metadata?.accountHolder ||
+          "Unknown",
+        currency:
+          result.statements?.[0]?.metadata?.currency ||
+          result.metadata?.currency ||
+          "USD",
         statementPeriod: {
-          start: "",
-          end: ""
-        }
-      }
+          start:
+            result.statements?.[0]?.metadata?.statementPeriod?.start ||
+            result.metadata?.statementPeriod?.start ||
+            "",
+          end:
+            result.statements?.[0]?.metadata?.statementPeriod?.end ||
+            result.metadata?.statementPeriod?.end ||
+            "",
+        },
+      },
     };
 
     // Log the raw statement for debugging
-    console.log('Raw statement:', JSON.stringify(rawStatement, null, 2));
+    console.log("Raw statement:", JSON.stringify(rawStatement, null, 2));
 
     // Validate the raw statement data
     const validation = validateStatementData(rawStatement);
@@ -293,7 +344,9 @@ export async function processPDFText(buffer: Buffer) {
   }
 }
 
-export async function processPDFWithGPT4(pdfText: string): Promise<ProcessedStatement> {
+export async function processPDFWithGPT4(
+  pdfText: string
+): Promise<ProcessedStatement> {
   try {
     // Split text into chunks
     const chunks = chunkText(pdfText);
@@ -306,7 +359,8 @@ export async function processPDFWithGPT4(pdfText: string): Promise<ProcessedStat
         messages: [
           {
             role: "system",
-            content: "You are a financial analyst specializing in bank statement analysis. Extract key financial metrics and provide loan recommendations based on spending patterns and income stability. Return data in a clean JSON format with no additional text or formatting."
+            content:
+              "You are a financial analyst specializing in bank statement analysis. Extract key financial metrics and provide loan recommendations based on spending patterns and income stability. Return data in a clean JSON format with no additional text or formatting.",
           },
           {
             role: "user",
@@ -337,6 +391,7 @@ export async function processPDFWithGPT4(pdfText: string): Promise<ProcessedStat
       "metadata": {
         "bankName": string,
         "accountHolder": string,
+        "currency": string,
         "statementPeriod": {
           "start": "YYYY-MM-DD",
           "end": "YYYY-MM-DD"
@@ -383,6 +438,7 @@ export async function processPDFWithGPT4(pdfText: string): Promise<ProcessedStat
   "metadata": {
     "bankName": string,
     "accountHolder": string,
+    "currency": string,
     "statementPeriod": {
       "start": "YYYY-MM-DD",
       "end": "YYYY-MM-DD"
@@ -402,37 +458,38 @@ Key requirements:
    - Account balance trend (0-100 score)
 6. Return ONLY the JSON object with no formatting
 7. Ensure all numbers are valid JSON numbers (no commas)
+8. Detect and specify the currency (USD, GBP, AUD, INR, etc.) based on statement format
 
 Here's the bank statement text:
 
-${chunk}`
-          }
+${chunk}`,
+          },
         ],
         max_tokens: 2048,
         temperature: 0.1,
       });
 
       let result;
-      let cleanContent = '';
+      let cleanContent = "";
       try {
-        const content = completion.choices[0].message.content || '{}';
+        const content = completion.choices[0].message.content || "{}";
         // Clean the content more thoroughly
         cleanContent = content
-          .replace(/```json\n?|\n?```/g, '')
-          .replace(/[\u200B-\u200D\uFEFF]/g, '')
-          .replace(/\u2028|\u2029/g, '\n')
-          .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
-          .replace(/,(\s*[}\]])/g, '$1')
+          .replace(/```json\n?|\n?```/g, "")
+          .replace(/[\u200B-\u200D\uFEFF]/g, "")
+          .replace(/\u2028|\u2029/g, "\n")
+          .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+          .replace(/,(\s*[}\]])/g, "$1")
           // Fix numbers with multiple decimal points
           .replace(/"balance":\s*(\d+\.\d+\.\d+)/g, (match, num) => {
             // Remove all decimal points except the last one
-            const parts = num.split('.');
-            return `"balance": ${parts[0]}.${parts.slice(1).join('')}`;
+            const parts = num.split(".");
+            return `"balance": ${parts[0]}.${parts.slice(1).join("")}`;
           })
           // Fix numbers with commas
-          .replace(/(\d+),(\d{3})/g, '$1$2')
+          .replace(/(\d+),(\d{3})/g, "$1$2")
           .trim();
-        
+
         result = JSON.parse(cleanContent);
 
         // Ensure required fields exist with default values
@@ -447,19 +504,35 @@ ${chunk}`
           approved: false,
           score: 0,
           maxAmount: 0,
-          reason: "Insufficient data"
+          reason: "Insufficient data",
+        };
+        result.metadata = result.metadata || {
+          bankName: "Unknown",
+          accountHolder: "Unknown",
+          currency: "USD",
+          statementPeriod: {
+            start: "",
+            end: "",
+          },
         };
       } catch (parseError) {
-        console.error('Error parsing GPT response:', parseError);
-        console.error('Raw response:', completion.choices[0].message.content);
-        console.error('Cleaned content length:', cleanContent.length);
-        throw new Error('Failed to parse GPT response as JSON');
+        console.error("Error parsing GPT response:", parseError);
+        console.error("Raw response:", completion.choices[0].message.content);
+        console.error("Cleaned content length:", cleanContent.length);
+        throw new Error("Failed to parse GPT response as JSON");
       }
-      
+
       // Validate the result structure
-      if (!result.statements || !result.summary || !result.categories || !result.balanceTrend || !result.loanRecommendation || !result.metadata) {
-        console.error('Invalid response structure:', result);
-        throw new Error('Invalid response format from GPT-4');
+      if (
+        !result.statements ||
+        !result.summary ||
+        !result.categories ||
+        !result.balanceTrend ||
+        !result.loanRecommendation ||
+        !result.metadata
+      ) {
+        console.error("Invalid response structure:", result);
+        throw new Error("Invalid response format from GPT-4");
       }
 
       results.push(result);
@@ -471,4 +544,4 @@ ${chunk}`
     console.error("Error processing PDF text:", error);
     throw error;
   }
-} 
+}

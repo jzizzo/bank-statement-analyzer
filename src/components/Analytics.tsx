@@ -17,19 +17,19 @@ export default function Analytics({ data }: AnalyticsProps) {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Total Income</h3>
           <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-            {currency} ${data.summary.totalDeposits.toLocaleString()}
+            {`${currency} ${data.summary.totalDeposits?.toLocaleString() ?? '0'}`}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Total Expenses</h3>
           <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-            {currency} ${data.summary.totalWithdrawals.toLocaleString()}
+            {`${currency} ${data.summary.totalWithdrawals?.toLocaleString() ?? '0'}`}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Current Balance</h3>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-            {currency} ${data.summary.endingBalance.toLocaleString()}
+            {`${currency} ${data.summary.endingBalance?.toLocaleString() ?? '0'}`}
           </p>
         </div>
       </div>
@@ -62,7 +62,9 @@ export default function Analytics({ data }: AnalyticsProps) {
                   {payment.frequency.charAt(0).toUpperCase() + payment.frequency.slice(1)}
                 </p>
               </div>
-              <p className="font-semibold">{currency} ${payment.amount.toLocaleString()}</p>
+              <p className="font-semibold">
+                {`${currency} ${payment.amount?.toLocaleString() ?? '0'}`}
+              </p>
             </div>
           ))}
         </div>
