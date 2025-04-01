@@ -1,12 +1,11 @@
-// components/ui/FileUpload.tsx
 "use client";
 
 import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useDropzone } from "react-dropzone";
 
 export default function FileUpload() {
   const [file, setFile] = useState<File | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,47 +14,19 @@ export default function FileUpload() {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length) {
       const selectedFile = acceptedFiles[0];
-
-      if (selectedFile.type !== "application/pdf") {
-        setError("Only PDF files are accepted");
-        return;
-      }
-
       setFile(selectedFile);
       setError(null);
     }
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragging(false);
-
-      if (e.dataTransfer.files.length) {
-        onDrop([...e.dataTransfer.files]);
-      }
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/pdf": [".pdf"],
     },
-    [onDrop]
-  );
-
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files?.length) {
-        onDrop([...e.target.files]);
-      }
-    },
-    [onDrop]
-  );
+    maxFiles: 1,
+    multiple: false,
+  });
 
   const handleUpload = async () => {
     if (!file) return;
@@ -81,33 +52,26 @@ export default function FileUpload() {
   return (
     <div className="w-full">
       <div
+        {...getRootProps()}
         className={`border-2 border-dashed rounded-lg p-12 text-center ${
-          isDragging
+          isDragActive
             ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
             : "border-gray-300 dark:border-gray-700"
         }`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
       >
+        <input {...getInputProps()} />
         {!file ? (
           <>
             <p className="text-gray-500 dark:text-gray-400 mb-4">
-              Drag and drop your bank statement PDF here
+              Drag and drop your bank statement PDF here, or click to select
+              files
             </p>
-            <input
-              type="file"
-              id="file-upload"
-              className="hidden"
-              accept="application/pdf"
-              onChange={handleFileSelect}
-            />
-            <label
-              htmlFor="file-upload"
+            <button
+              type="button"
               className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded cursor-pointer"
             >
               Select File
-            </label>
+            </button>
           </>
         ) : (
           <div>
@@ -116,14 +80,20 @@ export default function FileUpload() {
             </p>
             <div className="flex justify-center space-x-4 mt-4">
               <button
-                onClick={() => setFile(null)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFile(null);
+                }}
                 className="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded"
                 disabled={isUploading}
               >
                 Cancel
               </button>
               <button
-                onClick={handleUpload}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleUpload();
+                }}
                 className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded flex items-center"
                 disabled={isUploading}
               >
