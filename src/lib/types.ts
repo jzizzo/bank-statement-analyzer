@@ -48,6 +48,8 @@ export interface StatementMetadata {
   accountHolder: string;
   /** Currency code (e.g., "USD", "GBP", "AUD", "INR") */
   currency: string;
+  /** Error message if processing failed */
+  error?: string;
   /** Period covered by the statement */
   statementPeriod: {
     /** Start date of the statement period */
