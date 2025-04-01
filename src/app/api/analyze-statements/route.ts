@@ -28,16 +28,33 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate currency consistency
+    const firstCurrency = statements[0].metadata.currency;
+    const hasInconsistentCurrency = statements.some(
+      statement => statement.metadata.currency !== firstCurrency
+    );
+
+    if (hasInconsistentCurrency) {
+      console.error('Inconsistent currencies detected');
+      return NextResponse.json(
+        { error: "All statements must be in the same currency for analysis" },
+        { status: 400 }
+      );
+    }
+
     // Combine all statements into a single analysis
     const combinedStatement: RawStatementData = {
       regularPayments: statements.flatMap(s => s.regularPayments),
-      categories: statements[0].categories, // Use categories from first statement
-      balanceTrend: statements[0].balanceTrend, // Use balance trend from first statement
-      metadata: statements[0].metadata // Use metadata from first statement
+      categories: statements[0].categories,
+      balanceTrend: statements[0].balanceTrend,
+      metadata: {
+        ...statements[0].metadata,
+        currency: firstCurrency
+      }
     };
 
     // Prepare the data for GPT analysis
-    const analysisPrompt = `Analyze these bank statements and provide a comprehensive loan recommendation. Consider:
+    const analysisPrompt = `Analyze these bank statements and provide a comprehensive loan recommendation. All monetary values are in ${firstCurrency}. Consider:
 
 1. Income Stability:
    - Regular deposits
@@ -104,6 +121,7 @@ Return a JSON object with:
   "metadata": {
     "bankName": string,
     "accountHolder": string,
+    "currency": string,
     "statementPeriod": {
       "start": "YYYY-MM-DD",
       "end": "YYYY-MM-DD"
@@ -153,6 +171,7 @@ IMPORTANT: Return ONLY the JSON object, without any markdown formatting, code bl
 
       // Transform the data to match our ProcessedStatement type
       const processedStatement: ProcessedStatement = {
+        statements: statements,
         summary: result.summary,
         categories: result.categories,
         balanceTrend: result.balanceTrend,

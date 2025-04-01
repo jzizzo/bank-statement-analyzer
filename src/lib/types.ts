@@ -18,6 +18,7 @@ export interface BalancePoint {
 export interface StatementMetadata {
   bankName: string;
   accountHolder: string;
+  currency: string;  // e.g., "USD", "GBP", "AUD", "INR"
   statementPeriod: {
     start: string;
     end: string;

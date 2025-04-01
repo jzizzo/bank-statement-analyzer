@@ -8,6 +8,8 @@ interface AnalyticsProps {
 }
 
 export default function Analytics({ data }: AnalyticsProps) {
+  const currency = data.metadata.currency;
+  
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
@@ -15,19 +17,19 @@ export default function Analytics({ data }: AnalyticsProps) {
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Total Income</h3>
           <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-            ${data.summary.totalDeposits.toLocaleString()}
+            {currency} ${data.summary.totalDeposits.toLocaleString()}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Total Expenses</h3>
           <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-            ${data.summary.totalWithdrawals.toLocaleString()}
+            {currency} ${data.summary.totalWithdrawals.toLocaleString()}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Current Balance</h3>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-            ${data.summary.endingBalance.toLocaleString()}
+            {currency} ${data.summary.endingBalance.toLocaleString()}
           </p>
         </div>
       </div>
@@ -60,7 +62,7 @@ export default function Analytics({ data }: AnalyticsProps) {
                   {payment.frequency.charAt(0).toUpperCase() + payment.frequency.slice(1)}
                 </p>
               </div>
-              <p className="font-semibold">${payment.amount.toLocaleString()}</p>
+              <p className="font-semibold">{currency} ${payment.amount.toLocaleString()}</p>
             </div>
           ))}
         </div>

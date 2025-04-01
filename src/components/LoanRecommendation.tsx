@@ -5,6 +5,8 @@ interface LoanRecommendationProps {
 }
 
 export default function LoanRecommendation({ data }: LoanRecommendationProps) {
+  const currency = data.metadata.currency;
+
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
       <h2 className="text-xl font-bold mb-4">Loan Recommendation</h2>
@@ -46,7 +48,7 @@ export default function LoanRecommendation({ data }: LoanRecommendationProps) {
           <div className="flex">
             <div className="w-32">Max Amount:</div>
             <div className="font-semibold">
-              ${data.loanRecommendation?.maxAmount?.toLocaleString() || '0'}
+              {currency} ${data.loanRecommendation?.maxAmount?.toLocaleString() || '0'}
             </div>
           </div>
           <div className="flex">
