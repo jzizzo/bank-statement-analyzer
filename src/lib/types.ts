@@ -128,4 +128,4 @@ export interface RawStatementData {
   balanceTrend: BalancePoint[];
   /** Metadata for this chunk */
   metadata: StatementMetadata;
-} 
+}

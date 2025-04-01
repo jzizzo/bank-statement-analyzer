@@ -56,4 +56,4 @@ export default function IncomeExpensesChart({ data }: IncomeExpensesChartProps) 
       </ResponsiveContainer>
     </div>
   );
-} 
+}

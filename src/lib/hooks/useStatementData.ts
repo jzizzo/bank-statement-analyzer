@@ -19,4 +19,4 @@ export function useStatementData(): StatementContextType {
     );
   }
   return context;
-} 
+}

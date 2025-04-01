@@ -48,4 +48,4 @@ export default function BalanceTrendChart({ data }: BalanceTrendChartProps) {
       </ResponsiveContainer>
     </div>
   );
-} 
+}

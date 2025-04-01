@@ -244,4 +244,4 @@ function validateRawStatementData(data: any): data is RawStatementData {
     typeof data.metadata.statementPeriod.start === "string" &&
     typeof data.metadata.statementPeriod.end === "string"
   );
-} 
+}

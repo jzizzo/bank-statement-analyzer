@@ -105,4 +105,4 @@ export default function LoanRecommendation({ data }: LoanRecommendationProps) {
       </div>
     </div>
   );
-} 
+}

@@ -43,4 +43,4 @@ export function StatementProvider({ children }: { children: ReactNode }) {
       {children}
     </StatementContext.Provider>
   );
-} 
+}

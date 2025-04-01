@@ -30,4 +30,4 @@ export interface StatementContextType {
  * React context for statement data management.
  * Used to provide statement data and operations throughout the application.
  */
-export const StatementContext = createContext<StatementContextType | undefined>(undefined); 
+export const StatementContext = createContext<StatementContextType | undefined>(undefined);

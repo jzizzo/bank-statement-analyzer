@@ -42,4 +42,4 @@ export default function ExpenseBreakdownChart({ data }: ExpenseBreakdownChartPro
       </ResponsiveContainer>
     </div>
   );
-} 
+}

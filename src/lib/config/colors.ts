@@ -1,10 +1,4 @@
 /**
- * Color configuration for the bank statement analyzer application.
- * Defines a set of visually distinct colors optimized for dark mode
- * and used in various charts and visualizations throughout the app.
- */
-
-/**
  * Array of 10 visually distinct colors optimized for dark mode.
  * Colors are chosen to be accessible and aesthetically pleasing
  * while maintaining good contrast in both light and dark themes.
@@ -28,4 +22,4 @@ export const chartColors = [
  * Type definition for chart color indices.
  * Represents the valid index range for accessing colors in the chartColors array.
  */
-export type ChartColorIndex = number; 
+export type ChartColorIndex = number;

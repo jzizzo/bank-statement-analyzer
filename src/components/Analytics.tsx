@@ -71,4 +71,4 @@ export default function Analytics({ data }: AnalyticsProps) {
       </div>
     </div>
   );
-} 
+}
