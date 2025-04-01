@@ -1,15 +1,15 @@
-// Array of 10 visually distinct colors
+// Array of 10 visually distinct colors optimized for dark mode
 export const chartColors = [
-  '#2563eb', // Blue
-  '#dc2626', // Red
-  '#16a34a', // Green
-  '#9333ea', // Purple
-  '#f97316', // Orange
-  '#84cc16', // Lime
-  '#ec4899', // Pink
-  '#6366f1', // Indigo
-  '#0891b2', // Cyan
-  '#64748b', // Slate (for "Other")
+  '#60a5fa', // Soft blue
+  '#f87171', // Soft red
+  '#4ade80', // Soft green
+  '#c084fc', // Soft purple
+  '#fb923c', // Soft orange
+  '#facc15', // Soft yellow
+  '#38bdf8', // Sky blue
+  '#a78bfa', // Soft violet
+  '#34d399', // Soft emerald
+  '#94a3b8'  // Soft slate (for "Other")
 ] as const;
 
 export type ChartColorIndex = number; 
