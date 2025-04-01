@@ -11,12 +11,13 @@ export default function Home() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const { setStatementData, clearStatementData } = useStatementData();
+  const { setStatementData, clearStatementData, setIsLoading } = useStatementData();
 
   const handleAnalysisComplete = async (statements: RawStatementData[]) => {
     try {
       setError(null);
       setIsAnalyzing(true);
+      setIsLoading(true);
       
       console.log('handleAnalysisComplete - Starting analysis with statements:', statements);
       
@@ -66,6 +67,7 @@ export default function Home() {
       setError(error instanceof Error ? error.message : "Failed to analyze statements");
     } finally {
       setIsAnalyzing(false);
+      setIsLoading(false);
     }
   };
 

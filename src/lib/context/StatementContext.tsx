@@ -8,6 +8,7 @@ export interface StatementContextType {
   isLoading: boolean;
   setStatementData: (data: ProcessedStatement) => void;
   clearStatementData: () => void;
+  setIsLoading: (isLoading: boolean) => void;
 }
 
 export const StatementContext = createContext<StatementContextType | undefined>(undefined); 

@@ -17,7 +17,7 @@ export function StatementProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <StatementContext.Provider value={{ data, isLoading, setStatementData, clearStatementData }}>
+    <StatementContext.Provider value={{ data, isLoading, setStatementData, clearStatementData, setIsLoading }}>
       {children}
     </StatementContext.Provider>
   );

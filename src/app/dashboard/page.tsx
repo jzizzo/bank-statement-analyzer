@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import Analytics from "../../components/Analytics";
-import LoanRecommendation from "../../components/LoanRecommendation";
-import { useStatementData } from "../../lib/hooks/useStatementData";
+import Analytics from "@/components/Analytics";
+import LoanRecommendation from "@/components/LoanRecommendation";
+import { useStatementData } from "@/lib/hooks/useStatementData";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -17,6 +17,8 @@ export default function Dashboard() {
     clearStatementData();
     router.push("/");
   };
+
+  console.log("isLoading", isLoading);
 
   if (isLoading) {
     console.log('Dashboard - Rendering loading state');
