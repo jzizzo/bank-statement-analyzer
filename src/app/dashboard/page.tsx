@@ -1,8 +1,12 @@
-// Updated dashboard/page.tsx to be a client component
 "use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  IncomeExpensesChart,
+  ExpenseBreakdownChart,
+  BalanceTrendChart,
+} from "../components/ui/ChartComponents";
 
 interface Transaction {
   date: string;
@@ -17,9 +21,30 @@ interface Summary {
   endingBalance: number;
 }
 
+interface CategoryData {
+  name: string;
+  value: number;
+  color: string;
+}
+
+interface BalanceTrendData {
+  date: string;
+  balance: number;
+}
+
+interface LoanRecommendation {
+  approved: boolean;
+  score: number;
+  maxAmount: number;
+  reason: string;
+}
+
 interface StatementData {
   transactions: Transaction[];
   summary: Summary;
+  categories: CategoryData[];
+  balanceTrend: BalanceTrendData[];
+  loanRecommendation: LoanRecommendation;
 }
 
 export default function Dashboard() {
@@ -104,41 +129,76 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h2 className="text-xl font-bold mb-4">Income vs. Expenses</h2>
-          <div className="h-64 flex items-center justify-center">
-            {/* We'll add the chart here later */}
-            <div className="text-center">
-              <div className="flex justify-center space-x-8">
-                <div>
-                  <div className="h-40 w-20 bg-green-500 rounded-t-lg"></div>
-                  <p className="mt-2">Income</p>
-                </div>
-                <div>
-                  <div className="h-24 w-20 bg-red-500 rounded-t-lg"></div>
-                  <p className="mt-2">Expenses</p>
-                </div>
-              </div>
-            </div>
+          <div className="h-64">
+            <IncomeExpensesChart
+              income={data.summary.totalDeposits}
+              expenses={data.summary.totalWithdrawals}
+            />
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
           <h2 className="text-xl font-bold mb-4">Expense Breakdown</h2>
-          <div className="h-64 flex items-center justify-center text-gray-400">
-            Chart will appear here
+          <div className="h-64">
+            <ExpenseBreakdownChart categories={data.categories} />
           </div>
         </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-8">
+        <h2 className="text-xl font-bold mb-4">Balance Trend</h2>
+        <div className="h-64">
+          <BalanceTrendChart data={data.balanceTrend} />
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow mb-8">
         <h2 className="text-xl font-bold mb-4">Loan Recommendation</h2>
-        <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-lg">
-          <h3 className="text-lg font-semibold text-green-700 dark:text-green-400">
-            Recommend Approval
+        <div
+          className={`p-4 ${
+            data.loanRecommendation.approved
+              ? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30"
+              : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30"
+          } rounded-lg`}
+        >
+          <h3
+            className={`text-lg font-semibold ${
+              data.loanRecommendation.approved
+                ? "text-green-700 dark:text-green-400"
+                : "text-red-700 dark:text-red-400"
+            }`}
+          >
+            {data.loanRecommendation.approved
+              ? "Recommend Approval"
+              : "Not Recommended for Approval"}
           </h3>
-          <p className="mt-2">
-            Based on the financial analysis, this applicant shows stable income
-            and responsible spending habits. The debt-to-income ratio is within
-            acceptable limits.
-          </p>
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center">
+              <div className="w-32">Confidence Score:</div>
+              <div className="ml-2 w-full max-w-xs bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                <div
+                  className={`${
+                    data.loanRecommendation.approved
+                      ? "bg-green-600"
+                      : "bg-red-600"
+                  } h-2.5 rounded-full`}
+                  style={{ width: `${data.loanRecommendation.score}%` }}
+                ></div>
+              </div>
+              <span className="ml-2 font-semibold">
+                {data.loanRecommendation.score}%
+              </span>
+            </div>
+            <div className="flex">
+              <div className="w-32">Max Amount:</div>
+              <div className="font-semibold">
+                ${data.loanRecommendation.maxAmount.toLocaleString()}
+              </div>
+            </div>
+            <div className="flex">
+              <div className="w-32">Reason:</div>
+              <div>{data.loanRecommendation.reason}</div>
+            </div>
+          </div>
         </div>
       </div>
 

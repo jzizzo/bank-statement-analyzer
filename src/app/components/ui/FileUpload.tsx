@@ -35,23 +35,81 @@ export default function FileUpload() {
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      // For our MVP we'll use mock data since we're not implementing the full PDF parsing
+      // In a real implementation, we would send the file to our API endpoint
 
-      const response = await fetch("/api/process-pdf", {
-        method: "POST",
-        body: formData,
-      });
+      // Simulating analysis of different bank statements
+      const mockData = {
+        transactions: [
+          {
+            date: "2023-01-15",
+            description: "DEPOSIT",
+            amount: 2500.0,
+            type: "credit",
+          },
+          {
+            date: "2023-01-18",
+            description: "RENT PAYMENT",
+            amount: 1200.0,
+            type: "debit",
+          },
+          {
+            date: "2023-01-20",
+            description: "GROCERY STORE",
+            amount: 78.45,
+            type: "debit",
+          },
+          {
+            date: "2023-01-25",
+            description: "PAYROLL",
+            amount: 2400.0,
+            type: "credit",
+          },
+          {
+            date: "2023-01-28",
+            description: "UTILITIES",
+            amount: 145.3,
+            type: "debit",
+          },
+          {
+            date: "2023-01-31",
+            description: "ONLINE SHOPPING",
+            amount: 89.99,
+            type: "debit",
+          },
+        ],
+        summary: {
+          totalDeposits: 4900.0,
+          totalWithdrawals: 1513.74,
+          endingBalance: 3386.26,
+        },
+        categories: [
+          { name: "Housing", value: 60, color: "#3b82f6" },
+          { name: "Food", value: 20, color: "#f97316" },
+          { name: "Utilities", value: 10, color: "#8b5cf6" },
+          { name: "Shopping", value: 10, color: "#10b981" },
+        ],
+        balanceTrend: [
+          { date: "Week 1", balance: 2500.0 },
+          { date: "Week 2", balance: 1300.0 },
+          { date: "Week 3", balance: 3700.0 },
+          { date: "Week 4", balance: 3386.26 },
+        ],
+        loanRecommendation: {
+          approved: true,
+          score: 85,
+          maxAmount: 25000,
+          reason: "Strong income to expense ratio and consistent deposits",
+        },
+      };
 
-      if (!response.ok) {
-        throw new Error("Failed to process file");
-      }
+      // Store results in localStorage for now
+      localStorage.setItem("statementData", JSON.stringify(mockData));
 
-      const result = await response.json();
-
-      // For now, we'll just simulate a successful process and redirect
-      localStorage.setItem("statementData", JSON.stringify(result.data));
-      router.push("/dashboard");
+      setTimeout(() => {
+        setIsUploading(false);
+        router.push("/dashboard");
+      }, 1500);
     } catch (err) {
       setError("Error processing file. Please try again.");
       setIsUploading(false);
